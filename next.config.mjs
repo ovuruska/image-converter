@@ -7,6 +7,19 @@ try {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    esmExternals: true,
+    serverActions: false,
+    layers: true
+  },
+  webpack: (config) => {
+    config.experiments = {
+      ...config.experiments,
+      asyncWebAssembly: true,
+      layers: true
+    }
+    return config
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },

@@ -6,6 +6,10 @@ import { useState, useRef } from "react"
 import { Upload, Trash2, Globe } from "lucide-react"
 import translations from "@/app/intl/translations"
 import type { Language } from "@/app/intl/language"
+import JSZip from "jszip"
+// @ts-ignore
+import initWasm, { convert_image } from "wasm-image-converter/pkg/wasm_image_converter"
+
 
 
 export default function Home() {
@@ -36,6 +40,50 @@ export default function Home() {
       if (droppedFiles.length > 0) {
         setFiles((prevFiles) => [...prevFiles, ...droppedFiles])
       }
+    }
+  }
+
+  const handleConvert = async () => {
+    await initWasm()
+  
+    if (files.length === 1) {
+      const file = files[0]
+      const buffer = await file.arrayBuffer()
+      const converted = convert_image(new Uint8Array(buffer), format.toLowerCase())
+  
+      const originalName = file.name.replace(/\.[^/.]+$/, "")
+      const blob = new Blob([converted], { type: `image/${format}` })
+      const url = URL.createObjectURL(blob)
+  
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${originalName}.${format}`
+      a.click()
+      URL.revokeObjectURL(url)
+  
+    } else {
+      const zip = new JSZip()
+  
+      for (const file of files) {
+        try {
+          const buffer = await file.arrayBuffer()
+          const converted = convert_image(new Uint8Array(buffer), format.toLowerCase())
+  
+          const originalName = file.name.replace(/\.[^/.]+$/, "")
+          zip.file(`${originalName}.${format}`, converted)
+        } catch (err) {
+          console.error(`Failed to convert file: ${file.name}`, err)
+        }
+      }
+  
+      const zipBlob = await zip.generateAsync({ type: "blob" })
+      const url = URL.createObjectURL(zipBlob)
+  
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "converted-images.zip"
+      a.click()
+      URL.revokeObjectURL(url)
     }
   }
 
@@ -159,6 +207,7 @@ export default function Home() {
         <button
           className="w-full p-3 bg-[#00A800] text-[#001100] font-bold hover:bg-[#008800] transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-spacemono"
           disabled={files.length === 0}
+          onClick={handleConvert}
         >
           {t.convert}
         </button>
